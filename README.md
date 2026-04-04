@@ -1,19 +1,23 @@
 # SigLIP Fine-Tuning
 
-Fine-tunes `google/siglip-so400m-patch14-384` on domain-specific image-caption pairs using LoRA adapters, for use in semantic media search applications.
+## What and Why
 
-## Overview
+SigLIP is a vision-language model that learns to match images to text descriptions. Out of the box it works well on general images, but when you need it to understand a specific domain — your own photos, product images, or media library — the generic model may miss nuanced semantic connections that matter for your use case.
 
-- **Base model:** `google/siglip-so400m-patch14-384` (400M params, 384px)
-- **Method:** LoRA (rank=16) on vision encoder attention layers (`q_proj`, `v_proj`) — ~10M trainable params; text encoder frozen
-- **Loss:** SigLIP sigmoid contrastive loss
-- **Output:** your fine-tuned model pushed to your Hugging Face Hub
+Fine-tuning adapts the model to your data by teaching it the vocabulary and visual patterns specific to your domain. Rather than retraining the entire model (expensive and slow), this project uses **LoRA (Low-Rank Adaptation)** — a technique that inserts a small set of trainable weight adjustments (~10M parameters) into the vision encoder's attention layers while keeping everything else frozen. The result is a model that understands your images significantly better, trained in a fraction of the time and cost.
+
+The three notebooks in this repo implement a complete fine-tuning pipeline:
+1. **Generate captions** for your image dataset using BLIP
+2. **Fine-tune SigLIP** on those image-caption pairs using LoRA
+3. **Verify** that the fine-tuned model outperforms the baseline on your data
+
+---
 
 ## Prerequisites
 
-- Hugging Face account with a write-access token saved as `HF_TOKEN` in Colab secrets
-- A source image/video dataset on Hugging Face Hub (see **Dataset Setup** below)
-- Google Colab Pro (A10G GPU required for the training notebook)
+- A [Hugging Face](https://huggingface.co) account with a write-access token
+- A source image/video dataset uploaded to Hugging Face Hub (see **Dataset Setup** below)
+- Google Colab Pro (an A10G GPU is required for the training notebook)
 
 ## Dataset Setup
 
@@ -24,30 +28,72 @@ To create your own:
 2. Note the dataset ID (e.g. `your-username/your-media-dataset`)
 3. Set that ID as `SOURCE_DATASET` in Notebook 1 before running
 
+For best results, use **500–2,000 domain-specific images** with quality captions.
+
 > **Note:** If your source dataset is gated, you must first visit the dataset page on Hugging Face and accept the access request with your account. The notebooks authenticate using your `HF_TOKEN` — the token alone is not sufficient without prior gate acceptance.
 
-## Workflow
+---
 
-Run the notebooks in order:
+## Running the Notebooks
 
-### Step 1 — `01_prepare_captions.ipynb` (T4 GPU)
-Downloads your source dataset, generates text captions for each image/video frame using `Salesforce/blip-image-captioning-large`, and pushes the captioned dataset to `{your-username}/media-search-demo-captioned`.
+### Step 1 — Sign in to Google Colab
 
-### Step 2 — `02_train_siglip.ipynb` (A10G GPU)
-Loads the captioned dataset, applies LoRA to the SigLIP vision encoder, and trains for 3 epochs with:
-- Batch size: 8, gradient accumulation: 4 (effective batch: 32)
-- Learning rate: 2e-4 with cosine annealing + 50-step warmup
-- Best checkpoint per epoch pushed to your specified output repo on HF Hub
+Go to [Google Colab](https://colab.research.google.com) and sign in with your Google account.
 
-For best results, use **500–2,000 domain-specific images** with quality captions. Training on fewer images risks overfitting.
+### Step 2 — Upload the notebooks
 
-### Step 3 — `03_verify_model.ipynb` (T4 GPU)
-Compares cosine similarity of your fine-tuned model vs the baseline on 10 image-caption pairs.
+In Colab, go to **File → Upload notebook** and upload the notebooks from this repo one at a time as needed:
+- `01_prepare_captions.ipynb`
+- `02_train_siglip.ipynb`
+- `03_verify_model.ipynb`
+
+### Step 3 — Run Notebook 1: Generate Captions (T4 GPU)
+
+1. Open `01_prepare_captions.ipynb`
+2. Set the runtime to **T4 GPU** (Runtime → Change runtime type → T4 GPU)
+3. Add your secrets via the key icon (🔑) in the left sidebar:
+   - `HF_TOKEN` — your Hugging Face token with write access
+   - `HF_USERNAME` — your Hugging Face username
+4. In Cell 2, set `SOURCE_DATASET` to your dataset ID and `OUTPUT_DATASET` to where the captioned dataset should be saved
+5. Run all cells top to bottom with **Shift+Enter**
+
+This generates text captions for every image/video in your dataset using BLIP and pushes the result to your HF Hub.
+
+### Step 4 — Run Notebook 2: Fine-Tune SigLIP (A10G GPU)
+
+1. Open `02_train_siglip.ipynb`
+2. **Upgrade** the runtime to **A10G** (Runtime → Change runtime type → A10G small)
+3. Add the same secrets (`HF_TOKEN`, `HF_USERNAME`) as above
+4. In Cell 2, set `SOURCE_DATASET` to match the output from Notebook 1, and set `OUTPUT_REPO` to where the fine-tuned model should be saved
+5. Run all cells top to bottom
+
+Training runs for 3 epochs with LoRA adapters on the vision encoder. The best checkpoint per epoch is pushed to your HF Hub.
+
+### Step 5 — Run Notebook 3: Verify the Model (T4 GPU)
+
+1. Open `03_verify_model.ipynb`
+2. Set the runtime to **T4 GPU**
+3. Add the same secrets as above
+4. In Cell 2, set `FINETUNED_REPO` to match the output from Notebook 2, and `CAPTIONED_DATASET` to the output from Notebook 1
+5. Run all cells
+
+The notebook compares cosine similarity of your fine-tuned model vs the baseline on 10 image-caption pairs.  
 **Pass condition:** fine-tuned avg similarity > baseline avg similarity.
 
-## Post-Verification: Deploy Fine-Tuned Model
+---
 
-Once notebook 3 passes, update your production app to use the fine-tuned model:
+## Post-Verification: Deploy the Fine-Tuned Model
+
+Once Notebook 3 passes, update your production app to use the fine-tuned model:
 1. Replace the base model name (`google/siglip-so400m-patch14-384`) with your fine-tuned model repo ID in your indexer
 2. Delete any cached index files to force re-indexing with the new embeddings
 3. Restart the application
+
+---
+
+## Technical Overview
+
+- **Base model:** `google/siglip-so400m-patch14-384` (400M params, 384px)
+- **Method:** LoRA (rank=16) on vision encoder attention layers (`q_proj`, `v_proj`) — ~10M trainable params; text encoder frozen
+- **Loss:** SigLIP sigmoid contrastive loss
+- **Training:** 3 epochs, batch size 8 × gradient accumulation 4 (effective batch 32), lr 2e-4 with cosine annealing
