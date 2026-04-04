@@ -24,8 +24,8 @@ The three notebooks in this repo implement a complete fine-tuning pipeline:
 Create your own image dataset on HF Hub. As a reference, see [`mugdhav/media-search-demo-files`](https://huggingface.co/datasets/mugdhav/media-search-demo-files) for the expected structure — a dataset with an `image` column (and optionally a `video` column for video frames).
 
 To create your own:
-1. Upload your images/videos to a new HF dataset repo using `huggingface_hub` or the Hub web UI.
-2. Note the dataset ID (for example, `your-username/your-media-dataset`).
+1. Upload your images/videos to a new HF dataset repo using the [`huggingface_hub` Python library](https://huggingface.co/docs/huggingface_hub) or the [Hub web UI](https://huggingface.co/new-dataset).
+2. Note the dataset repo ID — the `username/dataset-name` portion of the dataset URL (for example, `your-username/your-media-dataset` from `https://huggingface.co/datasets/your-username/your-media-dataset`).
 3. Set that ID as `SOURCE_DATASET` in Notebook 1 before running.
 
 For best results, use **500–2,000 domain-specific images** with quality captions.
