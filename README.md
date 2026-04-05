@@ -13,6 +13,17 @@ The three notebooks in this repo implement a complete fine-tuning pipeline:
 
 ---
 
+## Notebooks
+
+Two platform-specific versions of the notebooks are available:
+
+- **`Huggingface/`** — for [Google Colab](https://colab.research.google.com). Uses Colab's secrets API (`google.colab.userdata`). Notebook 2 requires a Colab Pro A10G GPU (24GB VRAM).
+- **`Kaggle/`** — for [Kaggle](https://www.kaggle.com). Uses Kaggle's secrets API (`kaggle_secrets`). All three notebooks run on a free P100 GPU. See `Kaggle/README.md` for setup details.
+
+Both versions push to and pull from the same HF Hub repos — the platform choice affects only where training runs, not the output.
+
+---
+
 ## Prerequisites
 
 - A [Hugging Face (HF)](https://huggingface.co) account with a [write-access token](https://huggingface.co/docs/hub/en/security-tokens#what-are-user-access-tokens).
