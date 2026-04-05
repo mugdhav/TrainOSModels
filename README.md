@@ -26,7 +26,7 @@ Create your own image dataset on HF Hub. As a reference, see [`mugdhav/media-sea
 To create your own:
 1. Upload your images/videos to a new HF dataset repo using the [`huggingface_hub` Python library](https://huggingface.co/docs/huggingface_hub) or the [Hub web UI](https://huggingface.co/new-dataset).
 2. Note the dataset repo ID — the `username/dataset-name` portion of the dataset URL (for example, `your-username/your-media-dataset` from `https://huggingface.co/datasets/your-username/your-media-dataset`).
-3. Set that ID as `SOURCE_DATASET` in Notebook 1 before running.
+3. Add that ID as a Colab Secret named `SOURCE_DATASET` before running Notebook 1 (see Step 3 below).
 
 For best results, use **500–2,000 domain-specific images** with quality captions.
 
@@ -51,10 +51,13 @@ In Colab, go to **File → Upload notebook** and upload the notebooks from this 
 
 1. Open `01_prepare_captions.ipynb`.
 2. Set the runtime to **T4 GPU** (Runtime → Change runtime type → T4 GPU).
-3. Add your secrets via the key icon (🔑) in the left sidebar:
+3. Add the following secrets via the key icon (🔑) in the left sidebar — enable notebook access for each:
    - `HF_TOKEN` — your HF [write-access token](https://huggingface.co/docs/hub/en/security-tokens#what-are-user-access-tokens).
    - `HF_USERNAME` — your HF username.
-4. In Cell 2, set `SOURCE_DATASET` to your dataset ID and `OUTPUT_DATASET` to where the captioned dataset should be saved.
+   - `SOURCE_DATASET` — repo ID of your source dataset (for example, `your-username/your-media-dataset`).
+   - `OUTPUT_DATASET` — repo ID where the captioned dataset will be saved (for example, `your-username/output_ds`).
+   - If your dataset is gated, accept the access request on the HF Hub page first.
+4. In Cell 3, edit `IMAGE_COL` and `VIDEO_COL` directly in the code to match your dataset's column names.
 5. Run all cells top to bottom with **Shift+Enter**.
 
 This generates text captions for every image/video in your dataset using BLIP and pushes the result to your HF Hub.
@@ -63,9 +66,13 @@ This generates text captions for every image/video in your dataset using BLIP an
 
 1. Open `02_train_siglip.ipynb`.
 2. **Upgrade** the runtime to **A10G** (Runtime → Change runtime type → A10G small).
-3. Add the same secrets (`HF_TOKEN`, `HF_USERNAME`) as above.
-4. In Cell 2, set `SOURCE_DATASET` to match the output from Notebook 1, and set `OUTPUT_REPO` to where the fine-tuned model should be saved.
-5. Run all cells top to bottom.
+3. Add the following secrets via the key icon (🔑) in the left sidebar — enable notebook access for each:
+   - `HF_TOKEN` — your HF [write-access token](https://huggingface.co/docs/hub/en/security-tokens#what-are-user-access-tokens).
+   - `HF_USERNAME` — your HF username.
+   - `SOURCE_DATASET` — repo ID of the captioned dataset output from Notebook 1.
+   - `OUTPUT_REPO` — repo ID where the fine-tuned model will be saved (for example, `your-username/output_model`).
+4. In Cell 3, edit `BATCH_SIZE`, `GRAD_ACCUM`, `NUM_EPOCHS`, and `LORA_RANK` directly in the code if needed. If you run out of memory, set `BATCH_SIZE = 4` and `GRAD_ACCUM = 8`.
+5. Run all cells top to bottom with **Shift+Enter**.
 
 Training runs for 3 epochs with LoRA adapters on the vision encoder. The best checkpoint per epoch is pushed to your HF Hub.
 
@@ -73,9 +80,13 @@ Training runs for 3 epochs with LoRA adapters on the vision encoder. The best ch
 
 1. Open `03_verify_model.ipynb`.
 2. Set the runtime to **T4 GPU**.
-3. Add the same secrets as above.
-4. In Cell 2, set `FINETUNED_REPO` to match the output from Notebook 2, and `CAPTIONED_DATASET` to the output from Notebook 1.
-5. Run all cells.
+3. Add the following secrets via the key icon (🔑) in the left sidebar — enable notebook access for each:
+   - `HF_TOKEN` — your HF [write-access token](https://huggingface.co/docs/hub/en/security-tokens#what-are-user-access-tokens).
+   - `HF_USERNAME` — your HF username.
+   - `FINETUNED_REPO` — repo ID of the fine-tuned model output from Notebook 2.
+   - `CAPTIONED_DATASET` — repo ID of the captioned dataset output from Notebook 1.
+   - If your dataset is gated, accept the access request on the HF Hub page first.
+4. Run all cells top to bottom with **Shift+Enter**.
 
 The notebook compares [cosine similarity](https://en.wikipedia.org/wiki/Cosine_similarity) of your fine-tuned model vs the baseline on 10 image-caption pairs.
 **Pass condition:** fine-tuned avg similarity > baseline avg similarity.
